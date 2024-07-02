@@ -20,9 +20,8 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let mut results = Vec::new();
     println!("All File Paths:====================");
-    explore_dir(&config.query, &config.filepath, &mut results)?;
+    let results = explore_dir(&config.query, &config.filepath)?;
 
     println!("Results:====================");
     for result in results {
@@ -31,12 +30,13 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn explore_dir(query: &str, dir: &str, results: &mut Vec<String>) -> Result<(), Box<dyn Error>> {
+fn explore_dir(query: &str, dir: &str) -> Result<Vec<String>, Box<dyn Error>> {
     if !Path::new(dir).exists() {
         return Err(format!("{} does not exist", dir).into());
     }
 
     let mut stack = vec![dir.to_string()];
+    let mut results = Vec::new();
 
     while let Some(current_dir) = stack.pop() {
         if !Path::new(&current_dir).exists() {
@@ -60,5 +60,39 @@ fn explore_dir(query: &str, dir: &str, results: &mut Vec<String>) -> Result<(), 
             }
         }
     }
-    Ok(())
+    Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_new() {
+        let args = vec![
+            "minifind".to_string(),
+            "query".to_string(),
+            "filepath".to_string(),
+        ];
+        let config = Config::new(&args).unwrap();
+        assert_eq!(config.query, "query");
+        assert_eq!(config.filepath, "filepath");
+    }
+
+    #[test]
+    fn test_explore_dir() {
+        let query = "test";
+        let test_dir = "test_dir";
+
+        fs::create_dir_all(format!("{}/subdir", test_dir)).unwrap();
+        fs::write(format!("{}/file1.txt", test_dir), "test content").unwrap();
+        fs::write(format!("{}/subdir/file2.txt", test_dir), "test content").unwrap();
+
+        let results = explore_dir(query, test_dir).unwrap();
+
+        assert!(results.contains(&format!("{}/file1.txt", test_dir)));
+        assert!(results.contains(&format!("{}/subdir/file2.txt", test_dir)));
+
+        fs::remove_dir_all(test_dir).unwrap();
+    }
 }
