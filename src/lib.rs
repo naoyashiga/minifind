@@ -20,11 +20,18 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    explore_dir(&config.filepath)?;
+    let mut results = Vec::new();
+    println!("All File Paths:====================");
+    explore_dir(&config.query, &config.filepath, &mut results)?;
+    
+    println!("Results:====================");
+    for result in results {
+        println!("{}", result);
+    }
     Ok(())
 }
 
-fn explore_dir(dir: &str) -> Result<(), Box<dyn Error>> {
+fn explore_dir(query:&str, dir: &str, results: &mut Vec<String>) -> Result<(), Box<dyn Error>> {
     if !Path::new(dir).exists() {
         return Err(format!("{} does not exist", dir).into());
     }
@@ -36,39 +43,17 @@ fn explore_dir(dir: &str) -> Result<(), Box<dyn Error>> {
         let full_path_dir = format!("{}/{}", dir, file_path.to_string_lossy());
 
         if file_type.is_dir() {
-            println!("Dir: {:?}", full_path_dir);
-            explore_dir(&full_path_dir)?;
+            // println!("Dir: {:?}", full_path_dir);
+            explore_dir(&query, &full_path_dir, results)?;
         } else {
             println!("File: {:?}", full_path_dir);
+            if full_path_dir.contains(query) {
+                results.push(full_path_dir);
+            }
+            // if search(&query, &full_path_dir) {
+            //     results.push(full_path_dir);
+            // }
         }
     }
     Ok(())
-}
-
-pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-
-    results
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn case_sensitive() {
-        let query = "rs";
-        let contents = "\
-src/main.rs
-poem.txt
-";
-
-        assert_eq!(vec!["src/main.rs"], search(query, contents));
-    }
 }
