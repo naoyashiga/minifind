@@ -1,10 +1,10 @@
-use std::env;
 use std::error::Error;
+use std::fs;
+use std::path::Path;
 
 pub struct Config {
     pub query: String,
-    pub filename: String,
-    pub case_sensitive: bool,
+    pub filepath: String,
 }
 
 impl Config {
@@ -13,23 +13,35 @@ impl Config {
             return Err("not enough arguments");
         }
         let query = args[1].clone();
-        let filename = args[2].clone();
+        let filepath = args[2].clone();
 
-        let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
-
-        Ok(Config {
-            query,
-            filename,
-            case_sensitive,
-        })
+        Ok(Config { query, filepath })
     }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    for line in search(&config.query, &config.filename) {
-        println!("{}", line);
-    }
+    explore_dir(&config.filepath)?;
+    Ok(())
+}
 
+fn explore_dir(dir: &str) -> Result<(), Box<dyn Error>> {
+    if !Path::new(dir).exists() {
+        return Err(format!("{} does not exist", dir).into());
+    }
+    let entries = fs::read_dir(dir)?;
+    for entry in entries {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let file_path = entry.file_name();
+        let full_path_dir = format!("{}/{}", dir, file_path.to_string_lossy());
+
+        if file_type.is_dir() {
+            println!("Dir: {:?}", full_path_dir);
+            explore_dir(&full_path_dir)?;
+        } else {
+            println!("File: {:?}", full_path_dir);
+        }
+    }
     Ok(())
 }
 
